@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>abm programacao / 01 segunda CsharpDotNET / livro01 / cap01 / 03 Aprofundamento</title>
+  <link rel="stylesheet" href="../../../../reading.css">
+</head>
+<body>
+  <div class="container">
+    <nav class="reading-nav no-print" aria-label="Navegação">
+      <a href="./index.html">← Voltar ao Indice</a>
+      <button class="print-btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    </nav>
+
+    <article>
+      <h1 id="estruturação-e-execução-de-aplicações-c-.net-visão-profissional">Estruturação e Execução de Aplicações C# .NET: Visão Profissional</h1>
+<h2 id="padrões-e-boas-práticas">🔹 PADRÕES E BOAS PRÁTICAS</h2>
+<h3 id="organização-de-projetos-e-soluções">Organização de Projetos e Soluções</h3>
+<p><strong>Convenção de nomenclatura e estrutura física.</strong> Em projetos profissionais, a estrutura de diretórios deve espelhar a estrutura de namespaces. Embora o compilador não exija isso, as ferramentas de IDE e a navegação humana se beneficiam enormemente:</p>
+<pre class="plaintext"><code>src/
+├── Company.Project.Core/
+│   ├── Models/
+│   │   └── Customer.cs          → namespace Company.Project.Core.Models
+│   ├── Services/
+│   │   └── CustomerService.cs   → namespace Company.Project.Core.Services
+│   └── Company.Project.Core.csproj
+├── Company.Project.Api/
+│   └── ...
+└── tests/
+    ├── Company.Project.Core.Tests/
+    └── Company.Project.Integration.Tests/</code></pre>
+<p><strong>Por que separar <code>src</code> de <code>tests</code>?</strong> Facilita a configuração de pipelines de CI/CD, permite aplicar regras de análise de código diferentes (ex: cobertura de código só para <code>src</code>), e torna explícita a distinção entre código de produção e código de suporte à qualidade.</p>
+<p><strong>Global Usings estratégicos.</strong> Em vez de poluir cada arquivo com os mesmos <code>using</code>, centralize-os em um arquivo dedicado:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// GlobalUsings.cs</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>global <span class="kw">using</span> System<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>global <span class="kw">using</span> System<span class="op">.</span><span class="fu">Collections</span><span class="op">.</span><span class="fu">Generic</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>global <span class="kw">using</span> System<span class="op">.</span><span class="fu">Linq</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>global <span class="kw">using</span> System<span class="op">.</span><span class="fu">Threading</span><span class="op">.</span><span class="fu">Tasks</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>global <span class="kw">using</span> Microsoft<span class="op">.</span><span class="fu">Extensions</span><span class="op">.</span><span class="fu">Logging</span><span class="op">;</span></span></code></pre></div>
+<p><strong>Boas práticas:</strong></p>
+<ul>
+<li>Mantenha este arquivo na raiz do projeto.</li>
+<li>Inclua apenas namespaces usados em <strong>mais de 30%</strong> dos arquivos do projeto.</li>
+<li>Namespaces específicos de um domínio devem ser importados localmente — isso mantém as dependências explícitas onde importam.</li>
+</ul>
+<h3 id="design-de-ponto-de-entrada">Design de Ponto de Entrada</h3>
+<p><strong>Top-level statements vs. Main explícito: quando usar cada um?</strong></p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 24%" />
+<col style="width: 49%" />
+</colgroup>
+<thead>
+<tr>
+<th>Cenário</th>
+<th>Abordagem Recomendada</th>
+<th>Justificativa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Microsserviço, Web API</td>
+<td><code>Program.cs</code> com top-level statements</td>
+<td>O boilerplate é irrelevante; o foco está na configuração do <code>Host</code></td>
+</tr>
+<tr>
+<td>Aplicação Console simples</td>
+<td>Top-level statements</td>
+<td>Clareza e redução de ruído</td>
+</tr>
+<tr>
+<td>Biblioteca com exemplos executáveis</td>
+<td>Top-level statements em projetos de exemplo</td>
+<td>Facilita demonstrações</td>
+</tr>
+<tr>
+<td>Aplicação com lógica complexa de inicialização</td>
+<td><code>Main</code> explícito com classe <code>Program</code></td>
+<td>Permite injeção de dependência no entry point, testes unitários da lógica de bootstrap</td>
+</tr>
+<tr>
+<td>Múltiplos pontos de entrada condicionais</td>
+<td><code>Main</code> explícito (único) com delegação</td>
+<td>C# não suporta múltiplos entry points; use estratégia pattern</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exemplo de entry point testável com <code>Main</code> explícito:</strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Program.cs</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Program</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">static</span> async Task<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="fu">Main</span><span class="op">(</span><span class="dt">string</span><span class="op">[]</span> args<span class="op">)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">var</span> services <span class="op">=</span> <span class="fu">ConfigureServices</span><span class="op">();</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">var</span> app <span class="op">=</span> services<span class="op">.</span><span class="fu">GetRequiredService</span><span class="op">&lt;</span>Application<span class="op">&gt;();</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="kw">return</span> await app<span class="op">.</span><span class="fu">RunAsync</span><span class="op">(</span>args<span class="op">);</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="kw">static</span> IServiceProvider <span class="fu">ConfigureServices</span><span class="op">()</span> <span class="op">{</span> <span class="co">/* ... */</span> <span class="op">}</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co">// Application.cs</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> Application</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="kw">readonly</span> ILogger<span class="op">&lt;</span>Application<span class="op">&gt;</span> _logger<span class="op">;</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="kw">readonly</span> ICalculator _calculator<span class="op">;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">Application</span><span class="op">(</span>ILogger<span class="op">&lt;</span>Application<span class="op">&gt;</span> logger<span class="op">,</span> ICalculator calculator<span class="op">)</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>        _logger <span class="op">=</span> logger<span class="op">;</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>        _calculator <span class="op">=</span> calculator<span class="op">;</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> Task<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="fu">RunAsync</span><span class="op">(</span><span class="dt">string</span><span class="op">[]</span> args<span class="op">)</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Lógica testável</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Este padrão permite testar a lógica de inicialização sem executar o programa completo.</p>
+<h3 id="separação-de-responsabilidades-em-testes">Separação de Responsabilidades em Testes</h3>
+<p><strong>Padrão AAA (Arrange-Act-Assert) explícito:</strong></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span>TestMethod<span class="op">]</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">CalculateAverage_WithValidInputs_ReturnsCorrectMean</span><span class="op">()</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Arrange</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">var</span> inputs <span class="op">=</span> <span class="kw">new</span><span class="op">[]</span> <span class="op">{</span> <span class="st">&quot;1.5&quot;</span><span class="op">,</span> <span class="st">&quot;2.5&quot;</span><span class="op">,</span> <span class="st">&quot;3.0&quot;</span> <span class="op">};</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">var</span> expected <span class="op">=</span> <span class="fl">2.3333333333333335</span><span class="op">;</span> <span class="co">// (1.5+2.5+3.0)/3</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Act</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">var</span> result <span class="op">=</span> AverageCalculator<span class="op">.</span><span class="fu">ArithmeticMean</span><span class="op">(</span>inputs<span class="op">);</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Assert</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    Assert<span class="op">.</span><span class="fu">AreEqual</span><span class="op">(</span>expected<span class="op">,</span> result<span class="op">,</span> <span class="fl">1E-14</span><span class="op">);</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p><strong>Nomeclatura de testes:</strong> <code>[MethodUnderTest]_[Scenario]_[ExpectedBehavior]</code> — este padrão torna a intenção do teste imediatamente compreensível em relatórios de falha.</p>
+<h2 id="erros-comuns">🔹 ERROS COMUNS</h2>
+<h3 id="confundir-il-com-código-interpretado">1. Confundir IL com Código Interpretado</h3>
+<p><strong>Erro conceitual:</strong> Achar que .NET é interpretado como Python ou JavaScript clássico.</p>
+<p><strong>Realidade:</strong> A IL é <strong>sempre</strong> compilada para código de máquina nativo antes da execução — seja JIT (em runtime) ou AOT (em build). A diferença é <strong>quando</strong> essa compilação ocorre, não <strong>se</strong> ocorre.</p>
+<p><strong>Impacto prático:</strong> Esta confusão leva desenvolvedores a subestimar a performance do .NET. Em benchmarks, código C# JIT-compilado frequentemente iguala ou supera C++ em cenários de computação numérica intensiva devido às otimizações dinâmicas baseadas em perfil de execução real.</p>
+<h3 id="uso-incorreto-de-classes-static">2. Uso Incorreto de Classes Static</h3>
+<p><strong>Má prática:</strong></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">static</span> <span class="kw">class</span> GlobalState</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">static</span> Dictionary<span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">object</span><span class="op">&gt;</span> Cache <span class="op">=</span> <span class="kw">new</span><span class="op">();</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="kw">static</span> <span class="dt">string</span> CurrentUser <span class="op">{</span> <span class="kw">get</span><span class="op">;</span> <span class="kw">set</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p><strong>Problemas:</strong></p>
+<ul>
+<li>Estado global mutável é <strong>não thread-safe</strong> sem sincronização explícita.</li>
+<li>Dificulta testes: testes paralelos interferem entre si.</li>
+<li>Viola o princípio de inversão de dependência.</li>
+</ul>
+<p><strong>Alternativa correta:</strong></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">interface</span> ICacheService</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    T GetOrAdd<span class="op">&lt;</span>T<span class="op">&gt;(</span><span class="dt">string</span> key<span class="op">,</span> Func<span class="op">&lt;</span>T<span class="op">&gt;</span> factory<span class="op">);</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MemoryCacheService <span class="op">:</span> ICacheService<span class="op">,</span> IDisposable</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="kw">readonly</span> ConcurrentDictionary<span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> Lazy<span class="op">&lt;</span><span class="dt">object</span><span class="op">&gt;&gt;</span> _cache <span class="op">=</span> <span class="kw">new</span><span class="op">();</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> T GetOrAdd<span class="op">&lt;</span>T<span class="op">&gt;(</span><span class="dt">string</span> key<span class="op">,</span> Func<span class="op">&lt;</span>T<span class="op">&gt;</span> factory<span class="op">)</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">var</span> lazy <span class="op">=</span> _cache<span class="op">.</span><span class="fu">GetOrAdd</span><span class="op">(</span>key<span class="op">,</span> _ <span class="op">=&gt;</span> <span class="kw">new</span> Lazy<span class="op">&lt;</span><span class="dt">object</span><span class="op">&gt;(()</span> <span class="op">=&gt;</span> <span class="fu">factory</span><span class="op">()!));</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>        <span class="kw">return</span> <span class="op">(</span>T<span class="op">)</span>lazy<span class="op">.</span><span class="fu">Value</span><span class="op">;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">Dispose</span><span class="op">()</span> <span class="op">=&gt;</span> _cache<span class="op">.</span><span class="fu">Clear</span><span class="op">();</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co">// Registro no contêiner DI como Scoped ou Singleton</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>services<span class="op">.</span><span class="fu">AddSingleton</span><span class="op">&lt;</span>ICacheService<span class="op">,</span> MemoryCacheService<span class="op">&gt;();</span></span></code></pre></div>
+<h3 id="subestimar-o-custo-da-reflection">3. Subestimar o Custo da Reflection</h3>
+<p><strong>Cenário problemático:</strong></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">double</span> <span class="fu">CalculateAverageReflection</span><span class="op">(</span><span class="dt">string</span><span class="op">[]</span> inputs<span class="op">)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">var</span> method <span class="op">=</span> <span class="kw">typeof</span><span class="op">(</span>AverageCalculator<span class="op">).</span><span class="fu">GetMethod</span><span class="op">(</span><span class="st">&quot;ArithmeticMean&quot;</span><span class="op">);</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">return</span> <span class="op">(</span><span class="dt">double</span><span class="op">)</span>method<span class="op">.</span><span class="fu">Invoke</span><span class="op">(</span><span class="kw">null</span><span class="op">,</span> <span class="kw">new</span><span class="op">[]</span> <span class="op">{</span> inputs <span class="op">});</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p><strong>Impacto em produção:</strong></p>
+<ul>
+<li>Invocação via reflection é <strong>~100x mais lenta</strong> que chamada direta.</li>
+<li>O JIT não pode inlinear chamadas reflection.</li>
+<li>Native AOT quebra completamente (method trimmed).</li>
+</ul>
+<p><strong>Alternativa moderna — Source Generators:</strong></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span>Generator<span class="op">]</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> CalculatorGenerator <span class="op">:</span> IIncrementalGenerator</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">Initialize</span><span class="op">(</span>IncrementalGeneratorInitializationContext context<span class="op">)</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Gera código fortemente tipado em tempo de compilação</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        context<span class="op">.</span><span class="fu">RegisterPostInitializationOutput</span><span class="op">(</span>ctx <span class="op">=&gt;</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>            ctx<span class="op">.</span><span class="fu">AddSource</span><span class="op">(</span><span class="st">&quot;GeneratedCalculator.g.cs&quot;</span><span class="op">,</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>                <span class="kw">public</span> <span class="kw">static</span> <span class="kw">class</span> GeneratedCalculator</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>                <span class="op">{</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">public</span> <span class="kw">static</span> <span class="dt">double</span> <span class="fu">ArithmeticMean</span><span class="op">(</span><span class="dt">string</span><span class="op">[]</span> args<span class="op">)</span> <span class="op">=&gt;</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>                        args<span class="op">.</span><span class="fu">Select</span><span class="op">(</span><span class="dt">double</span><span class="op">.</span><span class="fu">Parse</span><span class="op">).</span><span class="fu">Average</span><span class="op">();</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;&quot;&quot;);</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">});</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="otimização-e-performance">🔹 OTIMIZAÇÃO E PERFORMANCE</h2>
+<h3 id="tiered-compilation-em-detalhe">Tiered Compilation em Detalhe</h3>
+<p><strong>Como funciona na prática:</strong></p>
+<ol type="1">
+<li><strong>Tier 0 (Quick JIT):</strong> Na primeira invocação, gera código rapidamente com poucas otimizações. Prioriza latência de inicialização.</li>
+<li><strong>Tier 1 (Optimized JIT):</strong> Após detectar que o método é “quente” (invocado frequentemente), recompila em background com otimizações agressivas (inline, loop unrolling, eliminação de bounds check).</li>
+<li><strong>Transição transparente:</strong> O runtime substitui o ponteiro do método atomically; chamadas em andamento completam no tier antigo.</li>
+</ol>
+<p><strong>Configuração via <code>.csproj</code>:</strong></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode xml"><code class="sourceCode xml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">PropertyGroup</span>&gt;</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">TieredCompilation</span>&gt;true&lt;/<span class="kw">TieredCompilation</span>&gt;</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">TieredCompilationQuickJit</span>&gt;true&lt;/<span class="kw">TieredCompilationQuickJit</span>&gt;</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">TieredPGO</span>&gt;true&lt;/<span class="kw">TieredPGO</span>&gt; <span class="co">&lt;!-- Profile-Guided Optimization dinâmico --&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">PropertyGroup</span>&gt;</span></code></pre></div>
+<p><strong>Trade-off:</strong></p>
+<ul>
+<li><strong>Pros:</strong> Melhor dos dois mundos — startup rápido e throughput otimizado.</li>
+<li><strong>Contras:</strong> Pico de CPU durante recompilação; não ideal para workloads com picos abruptos e efêmeros (ex: AWS Lambda cold start sem keep-alive).</li>
+</ul>
+<h3 id="native-aot-quando-e-por-quê">Native AOT: Quando e Por Quê</h3>
+<p><strong>Cenários onde Native AOT brilha:</strong></p>
+<ol type="1">
+<li><strong>CLI Tools:</strong> <code>dotnet tool install -g my-tool</code> — usuário espera resposta instantânea.</li>
+<li><strong>Funções Serverless:</strong> Cold start de 50ms vs 500ms é crítico para latência p99.</li>
+<li><strong>Containers Minimalistas:</strong> Imagem base <code>scratch</code> (sem runtime, sem libc) reduz superfície de ataque e tamanho.</li>
+</ol>
+<p><strong>Configuração mínima:</strong></p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode xml"><code class="sourceCode xml"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">PropertyGroup</span>&gt;</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">PublishAot</span>&gt;true&lt;/<span class="kw">PublishAot</span>&gt;</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">StripSymbols</span>&gt;true&lt;/<span class="kw">StripSymbols</span>&gt;</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">InvariantGlobalization</span>&gt;true&lt;/<span class="kw">InvariantGlobalization</span>&gt;</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">PropertyGroup</span>&gt;</span></code></pre></div>
+<p><strong>Verificação de compatibilidade AOT:</strong></p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Análise estática durante build</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">DynamicallyAccessedMembers</span><span class="op">(</span>DynamicallyAccessedMemberTypes<span class="op">.</span><span class="fu">PublicMethods</span><span class="op">)]</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> Type HandlerType <span class="op">{</span> <span class="kw">get</span><span class="op">;</span> <span class="kw">set</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Avisa se o trimmer remover membros necessários</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="op">[</span><span class="fu">RequiresUnreferencedCode</span><span class="op">(</span><span class="st">&quot;Uses reflection to invoke handlers&quot;</span><span class="op">)]</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">void</span> <span class="fu">InvokeHandler</span><span class="op">()</span> <span class="op">{</span> <span class="op">}</span></span></code></pre></div>
+<p><strong>Trade-off crítico:</strong> Bibliotecas que usam <code>Assembly.Load</code> dinâmico (ex: plugins) ou <code>System.Reflection.Emit</code> (ex: alguns serializadores legados) <strong>não funcionam</strong> em Native AOT. Sempre valide com <code>dotnet publish -p:PublishAot=true</code> antes de comprometer a arquitetura.</p>
+<h3 id="garbage-collection-e-alocação-zero">Garbage Collection e Alocação Zero</h3>
+<p><strong>Padrão de alta performance para operações repetitivas:</strong></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">double</span> <span class="fu">CalculateAverageOptimized</span><span class="op">(</span>ReadOnlySpan<span class="op">&lt;</span><span class="dt">string</span><span class="op">&gt;</span> inputs<span class="op">)</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> <span class="op">(</span>inputs<span class="op">.</span><span class="fu">IsEmpty</span><span class="op">)</span> <span class="kw">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">double</span> sum <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> count <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">foreach</span> <span class="op">(</span><span class="dt">var</span> input <span class="kw">in</span> inputs<span class="op">)</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Parse sem alocar substring</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>        <span class="kw">if</span> <span class="op">(</span><span class="dt">double</span><span class="op">.</span><span class="fu">TryParse</span><span class="op">(</span>input<span class="op">,</span> NumberStyles<span class="op">.</span><span class="fu">Any</span><span class="op">,</span> CultureInfo<span class="op">.</span><span class="fu">InvariantCulture</span><span class="op">,</span> <span class="kw">out</span> <span class="dt">var</span> value<span class="op">))</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>            sum <span class="op">+=</span> value<span class="op">;</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>            count<span class="op">++;</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">return</span> count <span class="op">&gt;</span> <span class="dv">0</span> <span class="op">?</span> sum <span class="op">/</span> count <span class="op">:</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p><strong>Por que isso é mais rápido?</strong></p>
+<ul>
+<li><code>ReadOnlySpan&lt;string&gt;</code> evita cópia do array.</li>
+<li><code>double.TryParse</code> com <code>CultureInfo.InvariantCulture</code> evita alocações de cultura específica.</li>
+<li>Sem LINQ = sem alocações de delegate (<code>Func&lt;string, double&gt;</code>).</li>
+<li>Zero pressão no GC durante o loop.</li>
+</ul>
+<h2 id="variações-e-alternativas">🔹 VARIAÇÕES E ALTERNATIVAS</h2>
+<h3 id="abordagens-para-cálculo-de-média">Abordagens para Cálculo de Média</h3>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 13%" />
+<col style="width: 22%" />
+<col style="width: 9%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Abordagem</th>
+<th>Performance</th>
+<th>Alocações</th>
+<th>Legibilidade</th>
+<th>Cenário Ideal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LINQ <code>Select().Average()</code></td>
+<td>Média</td>
+<td>Alta (delegates, iteradores)</td>
+<td>Excelente</td>
+<td>Protótipos, dados pequenos (&lt;10k)</td>
+</tr>
+<tr>
+<td>Loop manual <code>for</code></td>
+<td>Alta</td>
+<td>Zero</td>
+<td>Boa</td>
+<td>Hot paths, processamento em lote</td>
+</tr>
+<tr>
+<td><code>Span&lt;T&gt;</code> + SIMD</td>
+<td>Máxima</td>
+<td>Zero</td>
+<td>Complexa</td>
+<td>Processamento de sinais, machine learning</td>
+</tr>
+<tr>
+<td>PLINQ <code>AsParallel()</code></td>
+<td>Alta (multi-core)</td>
+<td>Alta</td>
+<td>Boa</td>
+<td>Grandes volumes CPU-bound</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exemplo SIMD para cálculos vetorizados:</strong></p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> System<span class="op">.</span><span class="fu">Numerics</span><span class="op">;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="dt">double</span> <span class="fu">AverageVectorized</span><span class="op">(</span><span class="dt">double</span><span class="op">[]</span> values<span class="op">)</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">var</span> vectorSum <span class="op">=</span> Vector<span class="op">&lt;</span><span class="dt">double</span><span class="op">&gt;.</span><span class="fu">Zero</span><span class="op">;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> vectorSize <span class="op">=</span> Vector<span class="op">&lt;</span><span class="dt">double</span><span class="op">&gt;.</span><span class="fu">Count</span><span class="op">;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Processa em blocos de 4 ou 8 doubles (depende da CPU)</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">for</span> <span class="op">(;</span> i <span class="op">&lt;=</span> values<span class="op">.</span><span class="fu">Length</span> <span class="op">-</span> vectorSize<span class="op">;</span> i <span class="op">+=</span> vectorSize<span class="op">)</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>        vectorSum <span class="op">+=</span> <span class="kw">new</span> Vector<span class="op">&lt;</span><span class="dt">double</span><span class="op">&gt;(</span>values<span class="op">,</span> i<span class="op">);</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">double</span> sum <span class="op">=</span> Vector<span class="op">.</span><span class="fu">Dot</span><span class="op">(</span>vectorSum<span class="op">,</span> Vector<span class="op">&lt;</span><span class="dt">double</span><span class="op">&gt;.</span><span class="fu">One</span><span class="op">);</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Processa o resto</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">for</span> <span class="op">(;</span> i <span class="op">&lt;</span> values<span class="op">.</span><span class="fu">Length</span><span class="op">;</span> i<span class="op">++)</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>        sum <span class="op">+=</span> values<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">return</span> sum <span class="op">/</span> values<span class="op">.</span><span class="fu">Length</span><span class="op">;</span></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="alternativas-ao-mstest">Alternativas ao MSTest</h3>
+<table>
+<colgroup>
+<col style="width: 7%" />
+<col style="width: 51%" />
+<col style="width: 40%" />
+</colgroup>
+<thead>
+<tr>
+<th>Framework</th>
+<th>Característica Distintiva</th>
+<th>Quando Usar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>xUnit</strong></td>
+<td><code>[Fact]</code>/<code>[Theory]</code>, paralelismo por padrão</td>
+<td>Projetos novos, maior controle sobre ciclo de vida</td>
+</tr>
+<tr>
+<td><strong>NUnit</strong></td>
+<td>Atributos ricos (<code>[TestCase]</code>, <code>[Values]</code>), assertions extensíveis</td>
+<td>Legado, ou quando precisa de parametrização complexa</td>
+</tr>
+<tr>
+<td><strong>MSTest</strong></td>
+<td>Integração profunda com Visual Studio, <code>Playwright</code> para UI</td>
+<td>Times Microsoft-first, projetos corporativos</td>
+</tr>
+</tbody>
+</table>
+<h2 id="contexto-profissional">🔹 CONTEXTO PROFISSIONAL</h2>
+<h3 id="arquitetura-de-microsserviços-com-.net">Arquitetura de Microsserviços com .NET</h3>
+<p><strong>Estrutura típica de uma solução enterprise:</strong></p>
+<pre class="plaintext"><code>src/
+├── Services/
+│   ├── OrderService/
+│   │   ├── OrderService.Api/           # Endpoints HTTP/gRPC
+│   │   ├── OrderService.Domain/        # Entidades, value objects
+│   │   ├── OrderService.Application/   # Casos de uso, CQRS handlers
+│   │   └── OrderService.Infrastructure/# Persistência, mensageria
+│   └── CustomerService/
+│       └── ...
+├── BuildingBlocks/
+│   ├── Common/                         # Utilitários cross-cutting
+│   ├── EventBus/                       # Abstração de mensageria
+│   └── Logging/                        # Serilog/OpenTelemetry setup
+├── Libraries/
+│   ├── Company.SDK/                    # SDK para clientes externos
+│   └── Company.Contracts/              # gRPC protos, DTOs compartilhados
+└── tests/
+    ├── IntegrationTests/
+    ├── ContractTests/                  # Pact tests para APIs
+    └── LoadTests/                      # k6 ou JMeter scripts</code></pre>
+<p><strong>Padrões de comunicação entre serviços:</strong></p>
+<ul>
+<li><strong>Síncrono:</strong> gRPC (alta performance) ou HTTP/REST (compatibilidade).</li>
+<li><strong>Assíncrono:</strong> RabbitMQ/Kafka com MassTransit ou NServiceBus.</li>
+<li><strong>Resiliência:</strong> Polly para retry, circuit breaker, bulkhead isolation.</li>
+</ul>
+<h3 id="pipeline-de-cicd-profissional">Pipeline de CI/CD Profissional</h3>
+<p><strong>Azure DevOps / GitHub Actions típico para .NET:</strong></p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># .github/workflows/ci.yml</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> CI</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">push</span><span class="kw">,</span><span class="at"> pull_request</span><span class="kw">]</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">build-and-test</span><span class="kw">:</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">runs-on</span><span class="kw">:</span><span class="at"> ubuntu-latest</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">steps</span><span class="kw">:</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/checkout@v4</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Setup .NET</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/setup-dotnet@v4</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="fu">          dotnet-version</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>            6.0.x</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>            8.0.x</span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Restore</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> dotnet restore --locked-mode</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Format Check</span></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> dotnet format --verify-no-changes</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Build</span></span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> dotnet build --no-restore --configuration Release</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Test</span></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> dotnet test --no-build --configuration Release --collect:&quot;XPlat Code Coverage&quot;</span></span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Publish (Native AOT)</span></span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> dotnet publish src/MyCliTool -c Release -r linux-x64 -p:PublishAot=true -o artifacts/</span></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Scan Vulnerabilities</span></span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> dotnet list package --vulnerable --include-transitive</span></span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-37"><a href="#cb15-37" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Upload Artifact</span></span>
+<span id="cb15-38"><a href="#cb15-38" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/upload-artifact@v3</span></span>
+<span id="cb15-39"><a href="#cb15-39" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">name</span><span class="kw">:</span><span class="at"> linux-x64-cli</span></span>
+<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">path</span><span class="kw">:</span><span class="at"> artifacts/</span></span></code></pre></div>
+<h3 id="integração-com-containerização">Integração com Containerização</h3>
+<p><strong>Dockerfile otimizado para .NET 8 (multi-stage):</strong></p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Estágio de build</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> mcr.microsoft.com/dotnet/sdk:8.0 <span class="kw">AS</span> build</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /src</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> [<span class="st">&quot;src/MyApi/MyApi.csproj&quot;</span>, <span class="st">&quot;MyApi/&quot;</span>]</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> [<span class="st">&quot;src/MyCore/MyCore.csproj&quot;</span>, <span class="st">&quot;MyCore/&quot;</span>]</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">dotnet</span> restore <span class="st">&quot;MyApi/MyApi.csproj&quot;</span> <span class="at">-r</span> linux-musl-x64</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> src/ .</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">dotnet</span> publish <span class="st">&quot;MyApi/MyApi.csproj&quot;</span> <span class="dt">\</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">-c</span> Release <span class="dt">\</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">-r</span> linux-musl-x64 <span class="dt">\</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--self-contained</span> true <span class="dt">\</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p:PublishSingleFile</span><span class="op">=</span>true <span class="dt">\</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p:PublishTrimmed</span><span class="op">=</span>true <span class="dt">\</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">-o</span> /app/publish</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Estágio final minimalista</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine <span class="kw">AS</span> final</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">adduser</span> <span class="at">-D</span> appuser <span class="kw">&amp;&amp;</span> <span class="fu">chown</span> <span class="at">-R</span> appuser /app</span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a><span class="kw">USER</span> appuser</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=build</span> /app/publish .</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a><span class="kw">ENTRYPOINT</span> [<span class="st">&quot;./MyApi&quot;</span>]</span></code></pre></div>
+<p><strong>Métricas de eficiência:</strong></p>
+<ul>
+<li>Tamanho da imagem final: ~45 MB (vs 200+ MB com SDK).</li>
+<li>Tempo de cold start em Kubernetes: &lt;500ms.</li>
+<li>Consumo de memória idle: ~18 MB.</li>
+</ul>
+<h3 id="monitoramento-e-observabilidade">Monitoramento e Observabilidade</h3>
+<p><strong>Integração com OpenTelemetry em .NET:</strong></p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode csharp"><code class="sourceCode cs"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Program.cs</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>builder<span class="op">.</span><span class="fu">Services</span><span class="op">.</span><span class="fu">AddOpenTelemetry</span><span class="op">()</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">WithMetrics</span><span class="op">(</span>metrics <span class="op">=&gt;</span> metrics</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddAspNetCoreInstrumentation</span><span class="op">()</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddHttpClientInstrumentation</span><span class="op">()</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddRuntimeInstrumentation</span><span class="op">()</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddPrometheusExporter</span><span class="op">())</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">WithTracing</span><span class="op">(</span>tracing <span class="op">=&gt;</span> tracing</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddAspNetCoreInstrumentation</span><span class="op">()</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddHttpClientInstrumentation</span><span class="op">()</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddEntityFrameworkCoreInstrumentation</span><span class="op">()</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">AddOtlpExporter</span><span class="op">(</span>options <span class="op">=&gt;</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>            options<span class="op">.</span><span class="fu">Endpoint</span> <span class="op">=</span> <span class="kw">new</span> <span class="fu">Uri</span><span class="op">(</span><span class="st">&quot;http://jaeger:4317&quot;</span><span class="op">);</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}));</span></span></code></pre></div>
+<p><strong>Métricas padrão expostas automaticamente:</strong></p>
+<ul>
+<li><code>http.server.request.duration</code> (histograma)</li>
+<li><code>process.runtime.dotnet.gc.collections.count</code></li>
+<li><code>process.runtime.dotnet.thread_pool.queue.length</code></li>
+<li><code>kestrel.active_connections</code></li>
+</ul>
+<p>Isso permite debugging de performance em produção sem necessidade de profiler externo.</p>
+<h3 id="considerações-de-segurança">Considerações de Segurança</h3>
+<p><strong>Boas práticas em nível de assembly:</strong></p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode xml"><code class="sourceCode xml"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">PropertyGroup</span>&gt;</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">Nullable</span>&gt;enable&lt;/<span class="kw">Nullable</span>&gt;</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">ImplicitUsings</span>&gt;enable&lt;/<span class="kw">ImplicitUsings</span>&gt;</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">TreatWarningsAsErrors</span>&gt;true&lt;/<span class="kw">TreatWarningsAsErrors</span>&gt;</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">AnalysisMode</span>&gt;Recommended&lt;/<span class="kw">AnalysisMode</span>&gt;</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">EnforceCodeStyleInBuild</span>&gt;true&lt;/<span class="kw">EnforceCodeStyleInBuild</span>&gt;</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">PropertyGroup</span>&gt;</span></code></pre></div>
+<p><strong>Proteção contra supply chain attacks:</strong></p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode xml"><code class="sourceCode xml"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">ItemGroup</span>&gt;</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">PackageReference</span><span class="ot"> Include=</span><span class="st">&quot;Newtonsoft.Json&quot;</span><span class="ot"> Version=</span><span class="st">&quot;13.0.3&quot;</span> /&gt;</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">PackageReference</span><span class="ot"> Include=</span><span class="st">&quot;System.Text.Json&quot;</span><span class="ot"> Version=</span><span class="st">&quot;8.0.0&quot;</span> /&gt;</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">ItemGroup</span>&gt;</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!-- Auditoria de vulnerabilidades --&gt;</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!-- dotnet list package </span><span class="er">--</span><span class="co">vulnerable --&gt;</span></span></code></pre></div>
+<p><strong>Native AOT como camada de segurança adicional:</strong> Código compilado AOT não contém metadados completos de tipos, dificultando engenharia reversa e exploração via reflection injection.</p>
+
+    </article>
+
+    <footer>
+      <p>ABM Estudos</p>
+    </footer>
+  </div>
+</body>
+</html>

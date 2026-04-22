@@ -1,0 +1,382 @@
+/* indexes.css - Navegação ABM Estudos */
+
+:root {
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+  --secondary: #ec4899;
+  --accent: #14b8a6;
+
+  --bg-start: #f1f5f9;
+  --bg-end: #e2e8f0;
+  --card-bg: rgba(255, 255, 255, 0.97);
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --border: rgba(99, 102, 241, 0.15);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 44px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-start: #0f172a;
+    --bg-end: #1e293b;
+    --card-bg: rgba(30, 41, 59, 0.97);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border: rgba(99, 102, 241, 0.25);
+    --border-subtle: rgba(255, 255, 255, 0.07);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 44px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ── Reset ──────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Body ───────────────────────────────────────────────── */
+body {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+  min-height: 100vh;
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding: 2rem 1rem;
+}
+
+/* Subtle ambient orbs */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 15% 85%,
+      rgba(99, 102, 241, 0.08) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(236, 72, 153, 0.08) 0%,
+      transparent 55%
+    );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Container ──────────────────────────────────────────── */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 2rem 2.5rem;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-subtle);
+  animation: fadeUp 0.45s ease-out both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Breadcrumb ─────────────────────────────────────────── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.07),
+    rgba(236, 72, 153, 0.07)
+  );
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.breadcrumb a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  background: var(--card-bg);
+  border: 1px solid transparent;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    transform 0.18s,
+    box-shadow 0.18s;
+}
+
+.breadcrumb a:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.breadcrumb span {
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+  color: #fff;
+}
+
+/* ── Section headings ───────────────────────────────────── */
+h2 {
+  margin: 1.75rem 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.9rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+}
+
+h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--primary), var(--secondary));
+  border-radius: 2px;
+}
+
+h2:first-of-type {
+  margin-top: 0.25rem;
+}
+
+/* Subgrupo dentro de Documentos Complementares */
+h3.doc-group-title {
+  margin: 1.1rem 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--border);
+}
+
+/* ── Lists ──────────────────────────────────────────────── */
+.folder-list,
+.file-list {
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.folder-list li,
+.file-list li {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.01)
+  );
+  transition:
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.22s,
+    border-color 0.22s;
+}
+
+.folder-list li:hover,
+.file-list li:hover {
+  transform: translateX(6px) translateY(-1px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-light);
+}
+
+.folder-list a,
+.file-list a {
+  text-decoration: none;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 1rem;
+  transition: color 0.18s;
+}
+
+.folder-list a:hover,
+.file-list a:hover {
+  color: var(--primary);
+}
+
+.folder-list a::before {
+  content: "📂";
+  margin-right: 10px;
+  font-size: 1.2rem;
+}
+
+.file-list a::before {
+  content: "📝";
+  margin-right: 10px;
+  font-size: 1.2rem;
+}
+
+/* ── Grids ──────────────────────────────────────────────── */
+.article-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.study-grid,
+.documents-grid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+/* Coloured left-border accents */
+.study-grid li {
+  border-left: 3px solid transparent;
+}
+.study-grid a[href*="_info"] {
+  border-left-color: #3b82f6;
+}
+.study-grid a[href*="_mapa"] {
+  border-left-color: #8b5cf6;
+}
+.study-grid a[href*="_present"],
+.study-grid a[href*="_apresentacao"] {
+  border-left-color: #ef4444;
+}
+.study-grid a[href*="resumo_visual"] {
+  border-left-color: #10b981;
+}
+.study-grid a[href*="linha_tempo"] {
+  border-left-color: #f59e0b;
+}
+.study-grid a[href*="fluxograma"] {
+  border-left-color: #06b6d4;
+}
+
+.documents-grid a[href$=".pdf"] {
+  border-left: 3px solid #ef4444;
+}
+.documents-grid a[href$=".doc"],
+.documents-grid a[href$=".docx"] {
+  border-left: 3px solid #3b82f6;
+}
+.documents-grid a[href$=".xls"],
+.documents-grid a[href$=".xlsx"],
+.documents-grid a[href$=".csv"] {
+  border-left: 3px solid #10b981;
+}
+.documents-grid a[href$=".zip"],
+.documents-grid a[href$=".rar"] {
+  border-left: 3px solid #8b5cf6;
+}
+.documents-grid a[href$=".txt"],
+.documents-grid a[href$=".rtf"] {
+  border-left: 3px solid #9ca3af;
+}
+.documents-grid a[href*="exercicios"],
+.documents-grid a[href*="questoes"] {
+  border-left-color: #f59e0b;
+}
+.documents-grid a[href*="gabarito"] {
+  border-left-color: #10b981;
+}
+.documents-grid a[href*="lei"],
+.documents-grid a[href*="jurisprudencia"] {
+  border-left-color: #6366f1;
+}
+
+/* ── EPUB list ──────────────────────────────────────────── */
+.epub-list a::before {
+  content: "📚";
+}
+
+/* ── Empty state ────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 2.5rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  font-size: 1rem;
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .container {
+    padding: 1.5rem 1.25rem;
+  }
+  .article-grid,
+  .study-grid,
+  .documents-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Print ───────────────────────────────────────────────── */
+@media print {
+  body {
+    background: #fff;
+    padding: 0.5in;
+  }
+  body::before {
+    display: none;
+  }
+  .container {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    animation: none;
+  }
+  .breadcrumb a,
+  .folder-list a,
+  .file-list a {
+    color: #000;
+    text-decoration: underline;
+  }
+}
